@@ -1,0 +1,8 @@
+{
+  // Statisk sajt: Cloudflare serverar allt i ./public, ingen serverkod behövs.
+  "name": "truppen",
+  "compatibility_date": "2026-10-28",
+  "assets": {
+    "directory": "./public"
+  }
+}

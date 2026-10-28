@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Truppen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game">
+  <canvas id="c" aria-label="Spelplan"></canvas>
+  <div class="hud" id="hud" hidden>
+    <div class="chip lvl"><span id="lvlName">Nivå 1</span><div class="bar"><i id="prog"></i></div></div>
+    <div class="chip"><span class="coin"></span><span id="coins">0</span></div>
+    <div class="chip"><span class="heart">♥</span><span id="lives">3</span></div>
+    <button class="chip" id="pause" aria-label="Pausa">❚❚</button>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="card">
+      <h1>Truppen</h1>
+      <p>Dra åt sidorna för att styra. Truppen skjuter själv. Skjut på portarna för att höja siffran och gå igenom den bästa.</p>
+      <p>Fiender som når dig tar soldater, och fiender du missar kostar också. Klara nivån, tjäna mynt och uppgradera. Var femte nivå väntar en boss.</p>
+      <p>Du har tre liv per omgång. Bossar fyller på dem, och ibland hittar du ett extra liv på vägen. När alla liv är slut får du välja en förmåga att ta med till nästa omgång.</p>
+      <div id="menuPerks"></div>
+      <div class="legend">
+        <span style="color:var(--good)">+ fler</span>
+        <span style="color:var(--bad)">− färre</span>
+        <span style="color:var(--gold)">byt vapen</span>
+      </div>
+      <div class="btnrow"><button class="go" id="play">Spela</button><button class="go alt" id="bestMenu">Bestiarium</button></div>
+      <div><button class="link" id="resetBtn" hidden>Börja om från nivå 1</button></div>
+      <p class="free">Inga annonser. Inga köp med riktiga pengar.</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="paused" hidden>
+    <div class="card">
+      <h2>Paus</h2>
+      <button class="go" id="resume">Fortsätt</button>
+      <div><button class="link" id="quit">Ge upp nivån (kostar ett liv)</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="fail" hidden>
+    <div class="card">
+      <h2 id="failTitle">Truppen föll</h2>
+      <div class="hearts" id="failLives"></div>
+      <p id="failInfo"></p>
+      <table class="stats" id="failStats"></table>
+      <button class="go" id="toShop">Till förrådet</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="bestiary" hidden>
+    <div class="card">
+      <h2>Bestiarium</h2>
+      <p class="bestprog" id="bestProg"></p>
+      <div class="bar wide"><i id="bestBar"></i></div>
+      <div id="bestList"></div>
+      <button class="go" id="bestClose">Tillbaka</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="perk" hidden>
+    <div class="card">
+      <h2>Välj en förmåga</h2>
+      <p id="perkInfo"></p>
+      <div id="perkOffers"></div>
+      <h3 id="perkSlotsTitle">Dina förmågor</h3>
+      <div id="perkSlots"></div>
+      <button class="link" id="perkSkip">Behåll mina förmågor och börja om</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="shop" hidden>
+    <div class="card">
+      <h2 id="shopTitle">Förrådet</h2>
+      <div class="earn" id="earn"></div>
+      <div class="wallet"><span class="coin"></span><span id="shopCoins">0</span></div>
+      <div id="shopPerks"></div>
+      <h3>Uppgraderingar</h3>
+      <div id="ups"></div>
+      <h3>Vapen</h3>
+      <div id="weps"></div>
+      <div class="btnrow"><button class="go" id="next">Starta nivå 1</button><button class="go alt" id="bestShop">Bestiarium</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
