@@ -1,6 +1,6 @@
 # CLAUDE.md – Truppen
 
-Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt i `public/`:
+Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt ligger i roten:
 - `index.html` – skal, HUD och alla overlays (meny, paus, död, förråd, förmåga, bestiarium)
 - `style.css` – UI-stil, ljust/mörkt läge via CSS-variabler på `:root`
 - `game.js` – hela spelet i en IIFE, ritas på `<canvas>`
@@ -45,11 +45,11 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt i `
 ## Testa
 
 Ingen testsvit. Kontrollera åtminstone:
-1. `node --check public/game.js`
-2. Öppna `public/index.html` och spela en nivå, gärna även i mörkt läge och smalt fönster (~390 px).
+1. `node --check game.js`
+2. Öppna `index.html` och spela en nivå, gärna även i mörkt läge och smalt fönster (~390 px).
 
 För snabb balanstest går det att sätta `localStorage` (`truppen-v3`) med valfri `level`/`up` i webbläsarens konsol och ladda om.
 
 ## Driftsättning
 
-Cloudflare Worker med statiska tillgångar (`wrangler.jsonc` → `./public`). Push till `main` driftsätts automatiskt om Workers Builds är kopplat till repot; annars `npx wrangler deploy`.
+GitHub Pages publicerar grenen `main` från roten (`.nojekyll` gör att filerna serveras som de är). Push till `main` = live efter någon minut på https://dlundin-private.github.io/troops/. Testa större ändringar på en egen gren först.
