@@ -223,7 +223,7 @@ function burst(X, Y, col, n = 10, pw = 1){
 function lose(raw, X, Y, label){
   const k = Math.max(1, Math.round(raw * (1 - armor())));
   st('lost', Math.min(k, Math.max(0, squad.n)));
-  squad.n -= k; shake = .3; glow = {col:C.bad, life:.3};
+  squad.n -= k; shake = .3; glow = {col:C.bad, life:.3}; SFX.hurt();
   addText(X, Y, (label ? label + ' ' : '') + '−' + k, C.bad, label ? 22 : 28);
 }
 
@@ -250,7 +250,7 @@ function spawnBoss(){
   boss = {boss:true, kind:B.kind, name:B.name, x:PW/2, y:-120, r:B.kind === 'heli' ? 38 : 46, hp, max:hp,
     hit:0, ph:0, shell:2.5, bomb:3, minion:3, shield:0, shieldT:5, f:1 + (L/5 - 1) * .12, extra:cycle, timer:45, charging:false};
   enemies.push(boss);
-  bossSpawned = true;
+  bossSpawned = true; SFX.bossIn();
   seeKey('boss:' + B.kind);
   addText(W/2, H*.4, B.name + '!', C.bad, 32, 1.6);
   addText(W/2, H*.4 + 34, B.info, '#fff', 13, 2.4);
@@ -306,6 +306,7 @@ function applyGate(g){
   if (g.k === 'type') addText(p.X, p.Y - 70, TYPES[g.v].name + '!', C.gold, 28);
   else addText(p.X, p.Y - 70, (d >= 0 ? '+' : '−') + Math.abs(d), col, 32);
   burst(p.X, p.Y - 20, col, 18);
+  SFX.gate(g.k === 'type' ? 'type' : d >= 0 ? 'good' : 'bad');
 }
 
 function updateHud(){
@@ -368,7 +369,7 @@ function update(dt){
       lifeItem.y += speed * dt;
       if (lifeItem.y >= SQY - 6){
         if (Math.abs(squad.x - lifeItem.x) < cr + 20){
-          save.lives = Math.min(9, save.lives + 1); persist();
+          save.lives = Math.min(9, save.lives + 1); persist(); SFX.life();
           const p = proj(lifeItem.x, SQY);
           addText(p.X, p.Y - 90, '+1 liv!', '#ff6b8a', 30); burst(p.X, p.Y - 30, '#ff6b8a', 30, 1.4); glow = {col:'#ff6b8a', life:.4};
           lifeItem = null;
@@ -398,6 +399,7 @@ function update(dt){
         dmg:per, share:squad.n / k * T.dmg, splash:T.splash || 0, col:T.col, r:T.r, len:T.len, minY: T.range ? y0 - T.range : -120,
         rocket:squad.type === 'raket', pierce:!!T.pierce, hits:T.pierce ? new Set() : null});
     }
+    SFX.shot(squad.type);
   }
   for (const b of bullets){
     b.x += b.vx * dt; b.y += b.vy * dt;
@@ -446,7 +448,7 @@ function update(dt){
         if (b.hits) b.hits.add(e); else b.dead = true;
         { const dd = b.dmg * (e.armored && !b.splash ? .5 : 1) * (e.boss ? 1 + perkVal('boss') : 1); st('dmg', Math.min(Math.max(e.hp, 0), dd)); e.hp -= dd; } e.hit = .08;
         if (b.splash){
-          burst(p.X, p.Y - 15*p.s, '#ff9a3c', 10);
+          burst(p.X, p.Y - 15*p.s, '#ff9a3c', 10); SFX.boom(false);
           rings.push({X:p.X, Y:p.Y, r:4, max:b.splash * p.s, life:.35});
           for (const o of enemies){
             if (o === e || o.shield > 0) continue;
@@ -486,7 +488,8 @@ function update(dt){
         const p = proj(e.x, e.y);
         burst(p.X, p.Y - e.r*p.s, e.boss ? '#ffb347' : e.col, e.boss ? 50 : 14, e.boss ? 2 : 1);
         rings.push({X:p.X, Y:p.Y - e.r*p.s, r:4, max:(e.boss ? 160 : 40) * p.s, life:e.boss ? .6 : .35});
-        if (e.boss){ addText(W/2, H*.4, 'Bossen fälld!', C.gold, 32, 1.6); shake = .5; boss = null; hazards = []; st('bosses', 1); }
+        if (!e.boss) SFX.kill();
+        if (e.boss){ SFX.boom(true); addText(W/2, H*.4, 'Bossen fälld!', C.gold, 32, 1.6); shake = .5; boss = null; hazards = []; st('bosses', 1); }
       }
     }
   }
@@ -502,7 +505,7 @@ function update(dt){
       if (pr >= 1){
         h.dead = true;
         const p = proj(h.tx, SQY);
-        burst(p.X, p.Y - 10, '#ff9a3c', 16, 1.3);
+        burst(p.X, p.Y - 10, '#ff9a3c', 16, 1.3); SFX.boom(false);
         rings.push({X:p.X, Y:p.Y, r:4, max:h.r * 1.6 * p.s, life:.4});
         if (Math.abs(squad.x - h.tx) < h.r + cr * .55) lose(Math.max(3, Math.ceil(squad.n * .22)), p.X, p.Y - 70, 'Träff');
       }
@@ -511,7 +514,7 @@ function update(dt){
       if (h.t <= 0){
         h.dead = true;
         const p = proj(h.x, SQY);
-        burst(p.X, p.Y - 10, '#ff6a3c', 22, 1.5);
+        burst(p.X, p.Y - 10, '#ff6a3c', 22, 1.5); SFX.boom(false);
         rings.push({X:p.X, Y:p.Y, r:4, max:h.r * 1.8 * p.s, life:.45});
         if (Math.abs(squad.x - h.x) < h.r + cr * .45) lose(Math.max(3, Math.ceil(squad.n * .25)), p.X, p.Y - 70, 'Bomb');
       }
@@ -1091,14 +1094,14 @@ function draw(){
 
 // ---------- skärmar ----------
 function show(id, on){ $(id).hidden = !on; const c = on && $(id).querySelector('.card'); if (c) c.scrollTop = 0; }
-function hideAll(){ ['menu','paused','fail','shop','hud','perk','bestiary'].forEach(id => show(id, false)); }
+function hideAll(){ ['menu','paused','fail','shop','hud','perk','bestiary','parent','lock'].forEach(id => show(id, false)); }
 
 function startLevel(){
   hideAll(); setupLevel(); state = 'play'; show('hud', true);
 }
 let lastResult = null;
 function complete(){
-  state = 'done';
+  state = 'done'; SFX.win();
   const comp = 15 + L * 5, surv = Math.floor(Math.max(0, squad.n) * .3), bossB = cfg.boss ? 25 * L : 0;
   save.coins += comp + surv + bossB; st('coins', comp + surv + bossB); st('levels', 1);
   save.level = L + 1;
@@ -1130,7 +1133,7 @@ function heartsHtml(){
 }
 let runOver = false, deathL = 1;
 function fail(){
-  state = 'fail';
+  state = 'fail'; SFX.fail();
   squad.n = 0;
   save.lives--;
   deathL = L;
@@ -1264,10 +1267,10 @@ $('shop').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
   if (b.dataset.up){
     const k = b.dataset.up, c = priceUp(k);
-    if (save.coins >= c && save.up[k] < upSteps(k)){ save.coins -= c; save.up[k]++; persist(); renderShop(); }
+    if (save.coins >= c && save.up[k] < upSteps(k)){ save.coins -= c; save.up[k]++; persist(); SFX.coin(); renderShop(); }
   } else if (b.dataset.wep){
     const k = b.dataset.wep, c = priceWep(k);
-    if (save.coins >= c){ save.coins -= c; save.weps.push(k); save.equip = k; persist(); renderShop(); }
+    if (save.coins >= c){ save.coins -= c; save.weps.push(k); save.equip = k; persist(); SFX.coin(); renderShop(); }
   } else if (b.dataset.equip){ save.equip = b.dataset.equip; persist(); renderShop(); }
 });
 
@@ -1279,6 +1282,7 @@ function openMenu(){
   $('resetBtn').textContent = 'Börja om från nivå 1 (förmågorna finns kvar)';
   resetArmed = false;
   $('menuPerks').innerHTML = perksLine();
+  parentInfo();
   squad = {x:PW/2, tx:PW/2, n:12, type:'gevar'}; L = save.level; cfg = levelCfg(L);
 }
 let resetArmed = false;
@@ -1388,12 +1392,250 @@ $('play').onclick = () => {
 };
 $('next').onclick = startLevel;
 $('toShop').onclick = () => runOver ? openPerk() : openShop();
-function pause(){ if (state !== 'play') return; state = 'paused'; persist(); show('paused', true); $('resume').focus(); }
+function pause(){ if (state !== 'play') return; state = 'paused'; persist(); saveParent(); show('paused', true); $('resume').focus(); }
 function resume(){ if (state !== 'paused') return; state = 'play'; show('paused', false); }
 $('pause').onclick = pause;
 $('resume').onclick = resume;
 $('quit').onclick = () => { show('paused', false); state = 'play'; fail(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+// ---------- ljud ----------
+// Allt syntetiseras med Web Audio, inga ljudfiler. Startas vid första tryck (krav i webbläsare).
+let snd = {music:true, sfx:true};
+try { const s = JSON.parse(localStorage.getItem('truppen-sound')); if (s) snd = Object.assign(snd, s); } catch(e) {}
+const AU = {ctx:null};
+function audioInit(){
+  if (AU.ctx){ if (AU.ctx.state === 'suspended' && !document.hidden) AU.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  const ctx = AU.ctx = new AC();
+  AU.master = ctx.createGain(); AU.master.gain.value = .8;
+  const comp = ctx.createDynamicsCompressor(); AU.master.connect(comp); comp.connect(ctx.destination);
+  AU.music = ctx.createGain(); AU.music.gain.value = 0; AU.music.connect(AU.master);
+  AU.sfx = ctx.createGain(); AU.sfx.gain.value = snd.sfx ? 1 : 0; AU.sfx.connect(AU.master);
+  const len = ctx.sampleRate, d = (AU.noise = ctx.createBuffer(1, len, ctx.sampleRate)).getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  AU.next = ctx.currentTime + .05; AU.step = 0;
+  setInterval(scheduleMusic, 25);
+}
+addEventListener('pointerdown', audioInit, true);
+addEventListener('keydown', audioInit, true);
+document.addEventListener('visibilitychange', () => { if (AU.ctx && document.hidden) AU.ctx.suspend(); });
+
+const mtof = m => 440 * 2 ** ((m - 69) / 12);
+function tone(f, t0, dur, o = {}){
+  const c = AU.ctx, osc = c.createOscillator(), g = c.createGain(), v = o.vol || .15, at = o.at || .005;
+  osc.type = o.type || 'sine';
+  osc.frequency.setValueAtTime(f, t0);
+  if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, t0 + dur);
+  if (o.det) osc.detune.value = o.det;
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(v, t0 + at); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  osc.connect(g); g.connect(o.dest || AU.sfx); osc.start(t0); osc.stop(t0 + dur + .02);
+}
+function noise(t0, dur, o = {}){
+  const c = AU.ctx, src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), v = o.vol || .15;
+  src.buffer = AU.noise; f.type = o.ft || 'lowpass'; f.frequency.setValueAtTime(o.f || 1200, t0); f.Q.value = o.q || 1;
+  if (o.to) f.frequency.exponentialRampToValueAtTime(o.to, t0 + dur);
+  g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  src.connect(f); f.connect(g); g.connect(o.dest || AU.sfx); src.start(t0, Math.random() * .5); src.stop(t0 + dur + .02);
+}
+const lastSfx = {};
+function canPlay(k, gap){
+  if (!AU.ctx || !snd.sfx || AU.ctx.state !== 'running') return false;
+  const n = performance.now(); if (n - (lastSfx[k] || 0) < gap) return false; lastSfx[k] = n; return true;
+}
+const SFX = {
+  shot(type){
+    if (!canPlay('shot', 45)) return; const t = AU.ctx.currentTime;
+    if (type === 'kpist'){ noise(t, .04, {f:3000, ft:'bandpass', q:2, vol:.06}); tone(220, t, .04, {type:'square', vol:.025, to:110}); }
+    else if (type === 'hagel'){ noise(t, .16, {f:1800, to:300, vol:.16}); tone(120, t, .12, {vol:.12, to:50}); }
+    else if (type === 'raket'){ noise(t, .35, {f:400, to:2400, ft:'bandpass', q:3, vol:.12}); }
+    else if (type === 'laser'){ tone(1800, t, .14, {type:'sawtooth', vol:.04, to:400}); tone(2400, t, .1, {vol:.04, to:900}); }
+    else { noise(t, .07, {f:2600, to:700, vol:.1}); tone(160, t, .07, {vol:.08, to:70}); }
+  },
+  kill(){ if (!canPlay('kill', 50)) return; const t = AU.ctx.currentTime, f = 500 + Math.random() * 200; tone(f, t, .1, {type:'triangle', vol:.07, to:f * .45}); },
+  boom(big){ if (!canPlay('boom', 70)) return; const t = AU.ctx.currentTime; noise(t, big ? .9 : .45, {f:big ? 900 : 1400, to:80, vol:big ? .4 : .2}); tone(big ? 70 : 90, t, big ? .7 : .35, {vol:big ? .3 : .15, to:35}); },
+  hurt(){ if (!canPlay('hurt', 90)) return; const t = AU.ctx.currentTime; tone(180, t, .22, {type:'square', vol:.06, to:70}); noise(t, .12, {f:600, vol:.12}); },
+  gate(kind){
+    if (!canPlay('gate', 100)) return; const t = AU.ctx.currentTime;
+    const notes = kind === 'good' ? [72, 76, 79, 84] : kind === 'bad' ? [67, 63, 60, 55] : [79, 86, 91, 98];
+    notes.forEach((m, i) => tone(mtof(m), t + i * .055, .22, {type:kind === 'bad' ? 'sawtooth' : 'triangle', vol:kind === 'bad' ? .05 : .09}));
+  },
+  coin(){ if (!canPlay('coin', 40)) return; const t = AU.ctx.currentTime; tone(mtof(88), t, .08, {type:'square', vol:.05}); tone(mtof(93), t + .07, .25, {type:'square', vol:.05}); },
+  life(){ if (!canPlay('life', 200)) return; const t = AU.ctx.currentTime; [76, 80, 83, 88].forEach((m, i) => tone(mtof(m), t + i * .08, .5, {vol:.1})); },
+  bossIn(){ if (!canPlay('bossIn', 500)) return; const t = AU.ctx.currentTime; [0, .45].forEach(d => { tone(mtof(40), t + d, .5, {type:'sawtooth', vol:.12, at:.03}); tone(mtof(46), t + d, .5, {type:'sawtooth', vol:.08, at:.03}); }); },
+  win(){ if (!canPlay('win', 500)) return; const t = AU.ctx.currentTime; [60, 64, 67, 72, 67, 72].forEach((m, i) => tone(mtof(m + 12), t + i * .1, i === 5 ? .6 : .14, {type:'square', vol:.06})); },
+  fail(){ if (!canPlay('fail', 500)) return; const t = AU.ctx.currentTime; [67, 66, 65, 64].forEach((m, i) => tone(mtof(m), t + i * .22, i === 3 ? .8 : .22, {type:'triangle', vol:.12, to:i === 3 ? mtof(60) : 0})); },
+  chime(){ if (!canPlay('chime', 300)) return; const t = AU.ctx.currentTime; [84, 79, 76].forEach((m, i) => tone(mtof(m), t + i * .25, 1.2, {vol:.08})); }
+};
+
+// Musik: ett 8-taktsmönster per kapiteltema som spelas om. Trummor bara under spel, mer tryck på bossnivåer.
+const MUSIC = [
+  {bpm:92,  root:50, scale:[0,1,4,5,7,8,10], prog:[0,0,5,4], lead:'triangle', bass:'triangle', drums:'k..h..k.s..h.k.h', dens:.35}, // Ökenfronten
+  {bpm:118, root:60, scale:[0,2,4,7,9],      prog:[0,3,1,4], lead:'square',   bass:'triangle', drums:'k.h.s.h.k.hks.h.', dens:.5},  // Bikupeängen
+  {bpm:84,  root:57, scale:[0,2,3,5,7,9,10], prog:[0,5,3,4], lead:'sine',     bass:'sine',     drums:'k...h...s...h..h', dens:.3},  // Bergspasset
+  {bpm:108, root:40, scale:[0,2,3,5,7,8,10], prog:[0,5,6,4], lead:'sawtooth', bass:'sawtooth', drums:'k.kh.ks.k.kh.ksh', dens:.4}   // Vulkanen
+];
+const deg = (sc, i) => sc[((i % sc.length) + sc.length) % sc.length] + 12 * Math.floor(i / sc.length);
+const seeded = n => { n = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); n ^= n >>> 13; n = Math.imul(n, 0xc2b2ae35); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
+function musicLevel(){
+  if (!snd.music) return 0;
+  return {play:1, done:1, menu:.75, shop:.75, perk:.75, bestiary:.75, fail:.6, paused:.35, parent:.35}[state] || 0;
+}
+function scheduleMusic(){
+  const c = AU.ctx; if (!c || c.state !== 'running') return;
+  AU.music.gain.setTargetAtTime(musicLevel() * .55, c.currentTime, .4);
+  if (AU.next < c.currentTime) AU.next = c.currentTime + .05;
+  const ti = chapterOf(L || 1) % MUSIC.length, M = MUSIC[ti];
+  if (AU.theme !== ti){ AU.theme = ti; AU.step = 0; }
+  const live = state === 'play' || state === 'done', boss = live && cfg && cfg.boss;
+  while (AU.next < c.currentTime + .12){
+    const t = AU.next, s = AU.step, st16 = s % 16, bar = Math.floor(s / 16) % 8, spb = 60 / M.bpm;
+    const chord = M.prog[Math.floor(bar / 2) % M.prog.length], o = {dest:AU.music};
+    if (musicLevel() > 0){
+      if (st16 === 0) [0, 2, 4].forEach(k => tone(mtof(M.root + 12 + deg(M.scale, chord + k)), t, spb * 4, Object.assign({type:'sine', vol:.035, at:.4}, o)));
+      if (st16 % 4 === 0 || (live && st16 % 2 === 0 && seeded(s * 7 + ti) < .3))
+        tone(mtof(M.root - 12 + deg(M.scale, chord + (st16 === 8 ? 4 : 0))), t, spb * .9, Object.assign({type:M.bass, vol:.09}, o));
+      const r = seeded(bar * 16 + st16 + ti * 977);
+      if (st16 % 2 === 0 && r < M.dens){
+        const n = Math.floor(seeded(bar * 31 + st16 * 3 + ti) * 7) - 1;
+        tone(mtof(M.root + 24 + deg(M.scale, chord + n)), t, spb * (r < M.dens / 3 ? 1.6 : .7), Object.assign({type:M.lead, vol:M.lead === 'sine' ? .07 : .035}, o));
+      }
+      if (live){
+        const d = M.drums[st16];
+        if (d === 'k' || (boss && st16 % 4 === 0)) tone(150, t, .18, Object.assign({vol:.22, to:45}, o));
+        if (d === 's') noise(t, .14, Object.assign({f:2200, ft:'bandpass', vol:.12}, o));
+        if (d === 'h' || (boss && st16 % 2 === 1)) noise(t, .04, Object.assign({f:8000, ft:'highpass', vol:.05}, o));
+      }
+    }
+    AU.next += spb / 4; AU.step++;
+  }
+}
+const sndBtns = () => {
+  for (const id of ['musicBtn', 'musicBtn2']) $(id).textContent = snd.music ? '🎵 Musik på' : '🎵 Musik av';
+  for (const id of ['sfxBtn', 'sfxBtn2']) $(id).textContent = snd.sfx ? '🔊 Ljud på' : '🔇 Ljud av';
+  for (const id of ['musicBtn', 'musicBtn2']) $(id).classList.toggle('on', snd.music);
+  for (const id of ['sfxBtn', 'sfxBtn2']) $(id).classList.toggle('on', snd.sfx);
+};
+const saveSnd = () => { try { localStorage.setItem('truppen-sound', JSON.stringify(snd)); } catch(e) {} sndBtns(); if (AU.ctx) AU.sfx.gain.value = snd.sfx ? 1 : 0; };
+for (const id of ['musicBtn', 'musicBtn2']) $(id).onclick = () => { snd.music = !snd.music; saveSnd(); };
+for (const id of ['sfxBtn', 'sfxBtn2']) $(id).onclick = () => { snd.sfx = !snd.sfx; saveSnd(); };
+sndBtns();
+
+// ---------- föräldraläge ----------
+// Egen nyckel så att spelets sparformat inte påverkas. left = sekunder speltid kvar, räknas bara i state 'play'.
+const ACTS = [
+  {id:'read', e:'📚', t:'Läs i 20 minuter'}, {id:'tramp', e:'🤸', t:'Gå ut och hoppa studsmatta'},
+  {id:'walk', e:'🚶', t:'Ta en promenad'}, {id:'home', e:'✏️', t:'Gör läxor i 20 minuter'},
+  {id:'room', e:'🧹', t:'Städa ditt rum'}, {id:'ball', e:'⚽', t:'Spela boll ute'},
+  {id:'bike', e:'🚲', t:'Cykla en sväng'}, {id:'draw', e:'🎨', t:'Rita eller bygg något'},
+  {id:'own', e:'⭐', t:'Egen aktivitet'}
+];
+const MINS = [10, 15, 20, 30, 45, 60];
+const freshParent = () => ({on:false, code:'', min:30, act:'read', custom:'', left:0});
+let parent = freshParent();
+try { const p = JSON.parse(localStorage.getItem('truppen-parent')); if (p) parent = Object.assign(freshParent(), p); } catch(e) {}
+const saveParent = () => { try { localStorage.setItem('truppen-parent', JSON.stringify(parent)); } catch(e) {} };
+const isLocked = () => parent.on && parent.left <= 0;
+const actOf = p => { const a = ACTS.find(a => a.id === p.act) || ACTS[0]; return a.id === 'own' ? {e:a.e, t:p.custom || a.t} : a; };
+const fmtLeft = s => s >= 60 ? `${Math.ceil(s / 60)} min` : `${Math.max(0, Math.ceil(s))} s`;
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+
+function parentInfo(){
+  $('parentInfo').hidden = !parent.on;
+  if (parent.on) $('parentInfo').textContent = `Föräldraläge: ${fmtLeft(parent.left)} speltid kvar`;
+  $('timeChip').hidden = !parent.on;
+  if (parent.on) $('timeLeft').textContent = fmtLeft(parent.left);
+}
+
+// Inställningar. draft är det som visas tills föräldern sparar.
+let draft = null;
+function openParent(){
+  hideAll(); state = 'parent'; show('parent', true);
+  draft = {min:parent.min, act:parent.act};
+  $('parentIntro').textContent = parent.on
+    ? 'Ändra det du vill och spara. Speltiden börjar om från början när du sparar.'
+    : 'Bestäm hur länge det går att spela. När tiden är slut behövs din kod för att spela vidare, och barnet får veta vad det ska göra under tiden.';
+  $('pCustom').value = parent.custom;
+  $('pCode1').value = $('pCode2').value = '';
+  $('pCodeTitle').textContent = parent.on ? 'Ny kod (lämna tomt för att behålla)' : 'Välj en kod (4 siffror)';
+  $('parentSave').textContent = parent.on ? 'Spara' : 'Slå på';
+  $('parentOff').hidden = !parent.on;
+  $('parentErr').hidden = true;
+  renderParent();
+}
+function renderParent(){
+  $('pMins').innerHTML = MINS.map(m => `<button type="button" class="opt${m === draft.min ? ' on' : ''}" data-min="${m}">${m}</button>`).join('');
+  $('pActs').innerHTML = ACTS.map(a => `<button type="button" class="act${a.id === draft.act ? ' on' : ''}" data-act="${a.id}"><span>${a.e}</span>${esc(a.t)}</button>`).join('');
+  $('pCustom').hidden = draft.act !== 'own';
+}
+$('parent').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.min){ draft.min = +b.dataset.min; renderParent(); }
+  else if (b.dataset.act){ draft.act = b.dataset.act; renderParent(); if (draft.act === 'own') $('pCustom').focus(); }
+});
+const parentErr = msg => { $('parentErr').textContent = msg; $('parentErr').hidden = false; };
+$('parentForm').onsubmit = e => {
+  e.preventDefault();
+  const c1 = $('pCode1').value.trim(), c2 = $('pCode2').value.trim(), custom = $('pCustom').value.trim();
+  if (draft.act === 'own' && !custom) return parentErr('Skriv vad barnet ska göra.');
+  if (!parent.on || c1 || c2){
+    if (!/^\d{4}$/.test(c1)) return parentErr('Koden ska vara fyra siffror.');
+    if (c1 !== c2) return parentErr('Koderna är inte likadana. Skriv samma kod två gånger.');
+    parent.code = c1;
+  }
+  Object.assign(parent, {on:true, min:draft.min, act:draft.act, custom, left:draft.min * 60});
+  saveParent(); openMenu();
+};
+$('parentBack').onclick = () => openMenu();
+$('parentOff').onclick = () => { parent = freshParent(); saveParent(); openMenu(); };
+
+// Kodruta: 'gate' = föräldern ska in i inställningarna, 'locked' = speltiden är slut.
+let lockMode = 'gate', lockReturn = 'menu';
+function openLock(mode, ret = 'menu'){
+  lockMode = mode; lockReturn = ret;
+  if (ret === 'menu') hideAll();
+  state = mode === 'gate' ? 'parent' : 'locked';
+  show('lock', true);
+  const a = actOf(parent);
+  $('lockTitle').textContent = mode === 'gate' ? 'Föräldraläge' : 'Speltiden är slut';
+  $('lockAct').hidden = mode === 'gate';
+  $('lockEmoji').textContent = a.e; $('lockText').textContent = a.t;
+  $('lockInfo').textContent = mode === 'gate'
+    ? 'Skriv koden för att ändra inställningarna.'
+    : `Bra kämpat! Nu är det dags för något annat. När du är klar ber du en vuxen skriva koden, så får du ${parent.min} minuter till.`;
+  $('lockBack').hidden = mode !== 'gate';
+  $('lockCode').value = ''; $('lockErr').hidden = true;
+  if (mode === 'gate') $('lockCode').focus();
+}
+function lockNow(){
+  state = 'locked'; drag = null; persist(); saveParent();
+  show('paused', false); openLock('locked', 'paused'); SFX.chime();
+}
+$('lockForm').onsubmit = e => {
+  e.preventDefault();
+  if ($('lockCode').value.trim() !== parent.code){
+    $('lockErr').textContent = 'Fel kod. Försök igen.'; $('lockErr').hidden = false;
+    $('lockCode').value = ''; $('lockCode').focus(); return;
+  }
+  show('lock', false);
+  if (lockMode === 'gate') return openParent();
+  parent.left = parent.min * 60; saveParent(); parentInfo();
+  if (lockReturn === 'paused'){ state = 'paused'; show('paused', true); $('resume').focus(); }
+  else openMenu();
+};
+$('lockBack').onclick = () => openMenu();
+$('parentBtn').onclick = () => parent.on ? openLock('gate') : openParent();
+
+let parentSaveT = 0;
+function tickParent(dt){
+  if (!parent.on || state !== 'play') return;
+  const before = parent.left;
+  parent.left -= dt;
+  if (before > 60 && parent.left <= 60) { addText(W/2, H*.3, '1 minut kvar!', C.gold, 26, 2); SFX.chime(); }
+  if ((parentSaveT += dt) > 5){ parentSaveT = 0; saveParent(); }
+  if (Math.ceil(before) !== Math.ceil(parent.left)) parentInfo();
+  if (parent.left <= 0){ parent.left = 0; lockNow(); }
+}
 
 // ---------- styrning ----------
 let drag = null;
@@ -1407,6 +1649,7 @@ cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', 
 const keys = {};
 const setDir = () => keyDir = ((keys.ArrowRight || keys.d) ? 1 : 0) - ((keys.ArrowLeft || keys.a) ? 1 : 0);
 addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
   keys[e.key] = true; setDir();
   if (e.key === 'Escape' || e.key === 'p') state === 'play' ? pause() : resume();
   if (e.key.startsWith('Arrow')) e.preventDefault();
@@ -1418,7 +1661,7 @@ let last = performance.now();
 function loop(now){
   const dt = Math.min(.033, (now - last) / 1000); last = now;
   stepAmb(dt);
-  if (state === 'play') update(dt);
+  if (state === 'play'){ update(dt); tickParent(dt); }
   else if (state === 'done'){ t += dt; dist += speed * dt * .8; moveProps(dt); for (const b of bullets) b.y += b.vy * dt; stepFx(dt); }
   else if (state === 'bestiary'){ t += dt; dist += 70 * dt; moveProps(dt); drawPortraits(); }
   else if (state === 'menu' || state === 'shop'){ t += dt; speed = 90; dist += 70 * dt; moveProps(dt); flashT = 0; if (texts) stepFx(dt); }
@@ -1429,5 +1672,6 @@ resize(); theme();
 bullets = []; enemies = []; gates = []; hazards = []; parts = []; rings = []; texts = [];
 openMenu();
 $('play').focus();
+if (isLocked()) openLock('locked', 'menu');
 requestAnimationFrame(loop);
 })();

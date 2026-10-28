@@ -19,6 +19,7 @@
     <div class="chip lvl"><span id="lvlName">Nivå 1</span><div class="bar"><i id="prog"></i></div></div>
     <div class="chip"><span class="coin"></span><span id="coins">0</span></div>
     <div class="chip"><span class="heart">♥</span><span id="lives">3</span></div>
+    <div class="chip" id="timeChip" hidden><span aria-hidden="true">⏱</span><span id="timeLeft"></span></div>
     <button class="chip" id="pause" aria-label="Pausa">❚❚</button>
   </div>
 
@@ -36,7 +37,10 @@
       </div>
       <div class="btnrow"><button class="go" id="play">Spela</button><button class="go alt" id="bestMenu">Bestiarium</button></div>
       <div><button class="link" id="resetBtn" hidden>Börja om från nivå 1</button></div>
+      <div class="toggles"><button class="tog" id="musicBtn"></button><button class="tog" id="sfxBtn"></button></div>
       <p class="free">Inga annonser. Inga köp med riktiga pengar.</p>
+      <p class="pinfo" id="parentInfo" hidden></p>
+      <div><button class="link" id="parentBtn">Föräldraläge</button></div>
     </div>
   </div>
 
@@ -44,6 +48,7 @@
     <div class="card">
       <h2>Paus</h2>
       <button class="go" id="resume">Fortsätt</button>
+      <div class="toggles"><button class="tog" id="musicBtn2"></button><button class="tog" id="sfxBtn2"></button></div>
       <div><button class="link" id="quit">Ge upp nivån (kostar ett liv)</button></div>
     </div>
   </div>
@@ -91,6 +96,37 @@
       <div id="weps"></div>
       <div class="btnrow"><button class="go" id="next">Starta nivå 1</button><button class="go alt" id="bestShop">Bestiarium</button></div>
     </div>
+  </div>
+
+  <div class="overlay" id="parent" hidden>
+    <form class="card" id="parentForm" novalidate>
+      <h2>Föräldraläge</h2>
+      <p id="parentIntro"></p>
+      <h3>Speltid</h3>
+      <div class="opts" id="pMins"></div>
+      <h3>Det här gör barnet för mer tid</h3>
+      <div id="pActs"></div>
+      <input class="field" id="pCustom" maxlength="40" placeholder="Skriv en egen aktivitet" autocomplete="off" hidden>
+      <h3 id="pCodeTitle">Välj en kod (4 siffror)</h3>
+      <div class="codes">
+        <input class="field code" id="pCode1" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Kod" aria-label="Kod">
+        <input class="field code" id="pCode2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Igen" aria-label="Skriv koden igen">
+      </div>
+      <p class="err" id="parentErr" hidden></p>
+      <div class="btnrow"><button class="go" id="parentSave">Slå på</button><button class="go alt" type="button" id="parentBack">Tillbaka</button></div>
+      <div><button class="link" type="button" id="parentOff" hidden>Stäng av föräldraläge</button></div>
+    </form>
+  </div>
+
+  <div class="overlay" id="lock" hidden>
+    <form class="card" id="lockForm" novalidate>
+      <h2 id="lockTitle"></h2>
+      <div class="actbig" id="lockAct" hidden><span id="lockEmoji"></span><b id="lockText"></b></div>
+      <p id="lockInfo"></p>
+      <input class="field code big" id="lockCode" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="Kod" aria-label="Förälderns kod">
+      <p class="err" id="lockErr" hidden></p>
+      <div class="btnrow"><button class="go" id="lockOk">Lås upp</button><button class="go alt" type="button" id="lockBack" hidden>Tillbaka</button></div>
+    </form>
   </div>
 </div>
 

@@ -12,7 +12,7 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt lig
 - **Allt UI-språk är svenska.** Typografiska tecken i text som visas: ’ och ” ”, minustecken − (U+2212) i siffror som “−5”.
 - **Inga beroenden, inget byggsteg.** Inga npm-paket i spelet. Externt laddas bara Google Fonts (Bungee, Figtree) med fallback.
 - **Ingen pay-to-win, inga annonser, inga riktiga köp.** Mynt tjänas bara i spelet.
-- **Sparning:** `localStorage`-nycklarna `truppen-v3` (pågående omgång) och `truppen-meta` (förmågor, rekord, bestiarium). Ändra inte formatet utan migrering – spelare har sparad progress. Lägg till nya fält med standardvärden via `Object.assign(fresh(), …)`-mönstret.
+- **Sparning:** `localStorage`-nycklarna `truppen-v3` (pågående omgång), `truppen-meta` (förmågor, rekord, bestiarium), `truppen-parent` (föräldraläge) och `truppen-sound` (musik/ljud på eller av). Ändra inte formatet utan migrering – spelare har sparad progress. Lägg till nya fält med standardvärden via `Object.assign(fresh(), …)`-mönstret.
 - Både ljust och mörkt läge ska fungera (`prefers-color-scheme` och `data-theme`).
 - Mobil först: touch-styrning med relativ dragning, safe-area-insets, inga hover-beroenden.
 
@@ -28,9 +28,11 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt lig
 | ritning | värld, rekvisita, portar, fiender (`drawEnemy` med skins), bossar, trupp, effekter |
 | skärmar | nivå klar/död, statistiktabell, förmågor, förråd, meny |
 | bestiarium | namn/texter per skin×typ, porträtt ritas med samma `drawEnemy` på små canvas |
+| ljud | Web Audio, inga filer. `SFX.*` för händelser, `MUSIC` = ett generativt 8-taktsmönster per kapiteltema, trummor bara under spel |
+| föräldraläge | kod, speltid (`left` i sekunder, räknas bara i `play`), aktivitet. Tiden slut → `state = 'locked'`, rätt kod fyller på och går till paus |
 | styrning / loop | pekare + tangenter, `requestAnimationFrame`-loop |
 
-`state` är en av: `menu`, `play`, `paused`, `done`, `fail`, `shop`, `perk`, `bestiary`.
+`state` är en av: `menu`, `play`, `paused`, `done`, `fail`, `shop`, `perk`, `bestiary`, `parent`, `locked`.
 
 ## Spelregler och balans (ändra medvetet)
 
