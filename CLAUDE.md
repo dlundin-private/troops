@@ -36,8 +36,8 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt lig
 
 ## Spelregler och balans (ändra medvetet)
 
-- **Kapitel:** 5 nivåer per kapitel, bossen på nivå 5/10/15/20 bestämmer temat för kapitlet. Cykeln upprepas från nivå 21 (bossar får `extra`-förmågor per varv).
-- **Fiender:** liv `13 · 1.31^(L−1)`, typer låses upp på nivå 3/6/8/11, murar från nivå 4. Kontakt kostar `hp / (3·skada·3)` soldater (max 30 % av maxstorlek), missad fiende hälften (max 15 %).
+- **Kapitel:** 5 nivåer per kapitel, fem kapitel: Ökenfronten, Bikupeängen, Bergspasset, Vulkanen, Stormkusten. Bossen på nivå 5/10/15/20/25 hör till kapitlets tema. Cykeln upprepas från nivå 26 (bossar får `extra`-förmågor per varv). Ett nytt kapitel kräver ett tema i `THEMES`, en boss i `BOSSES`, ett skin i `SKINS` (+ `drawEnemy`, `BEAST_NAMES`, `SKIN_LORE`), en rad i `MUSIC` och `BOSS_ABIL`, i samma ordning.
+- **Fiender:** liv `13 · 1.31^(L−1)`, typer låses upp på nivå 3/6/8/11/21 (sicksackare från 21, i alla kapitel), murar från nivå 4. Kontakt kostar `hp / (3·skada·3)` soldater (max 30 % av maxstorlek), missad fiende hälften (max 15 %).
 - **Bossar:** liv `nivåns hp · 180`, 45 s innan de anfaller och utplånar truppen, rasande under 50 % liv.
 - **Ekonomi:** kill-belöning `hp · 0.08`, uppgraderingar utan tak med kostnad ×1.34–1.45 per steg. Kurvan är kalibrerad så att svårigheten ökar ~31 %/nivå och spelarens styrka något långsammare – det skapar en vägg som förmågorna flyttar några nivåer.
 - **Portar:** växer när man skjuter på dem i takt med vapnets skada/s (`share`), inte uppgraderingar.
@@ -51,6 +51,10 @@ Ingen testsvit. Kontrollera åtminstone:
 2. Öppna `index.html` och spela en nivå, gärna även i mörkt läge och smalt fönster (~390 px).
 
 För snabb balanstest går det att sätta `localStorage` (`truppen-v3`) med valfri `level`/`up` i webbläsarens konsol och ladda om.
+
+## Offline
+
+`sw.js` sparar spelets filer (`FILES`) och visar den sparade versionen direkt medan en ny hämtas i bakgrunden. Lägg till nya filer i `FILES`, och höj `CACHE` om en fil tas bort eller byter namn. Rör bara cachar som börjar på `truppen-`, adressen kan delas med Lilla Byn.
 
 ## Driftsättning
 

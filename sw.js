@@ -2,7 +2,8 @@
 // Allt i FILES sparas vid installation. Vid varje besök visas den sparade versionen direkt
 // och en ny hämtas i bakgrunden, så en push till main syns från andra öppningen.
 // Lägg till nya filer i FILES och höj CACHE om en fil tas bort eller byter namn.
-const CACHE = 'truppen-v1';
+// Adressen kan delas med andra spel (t.ex. Lilla Byn), så rör bara cachar som börjar på 'truppen-'.
+const CACHE = 'truppen-v2';
 const FILES = ['./', 'index.html', 'style.css', 'game.js', 'manifest.webmanifest',
   'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'fonts/bungee.woff2', 'fonts/figtree.woff2'];
 
@@ -12,7 +13,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    .then(keys => Promise.all(keys.filter(k => k.startsWith('truppen-') && k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 

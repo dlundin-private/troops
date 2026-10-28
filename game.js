@@ -55,7 +55,8 @@ const ETYPES = {
   runner: {col:'#3fc1d9', hp:.45, walk:2.3, r:.75,  w:2,   from:3},
   brute:  {col:'#9a55e0', hp:3.2, walk:.55, r:1.45, w:1,   from:6},
   armor:  {col:'#8d96a3', hp:1.3, walk:.9,  r:1.1,  w:1.3, from:8,  armored:true},
-  split:  {col:'#f39a2c', hp:1.2, walk:1,   r:1.05, w:1.3, from:11, split:true}
+  split:  {col:'#f39a2c', hp:1.2, walk:1,   r:1.05, w:1.3, from:11, split:true},
+  zigzag: {col:'#f25ca8', hp:.8,  walk:1.1, r:.95,  w:1.4, from:21, zig:true}
 };
 function pickType(){
   const opts = Object.keys(ETYPES).filter(k => !ETYPES[k].from || L >= ETYPES[k].from);
@@ -93,7 +94,8 @@ const BOSSES = [
   {kind:'tank',  name:'Pansarvagnen', info:'Skjuter granater mot dig. Håll dig undan de röda ringarna.'},
   {kind:'hive',  name:'Bikupan',      info:'Släpper ut småkryp och skyddar sig med en sköld.'},
   {kind:'heli',  name:'Helikoptern',  info:'Rör sig snabbt och fäller bomber. Flytta dig när marken blir röd.'},
-  {kind:'titan', name:'Titanen',      info:'Granater, bomber och sköld på en gång.'}
+  {kind:'titan', name:'Titanen',      info:'Granater, bomber och sköld på en gång.'},
+  {kind:'kraken', name:'Kraken',      info:'Slår med tentaklerna. Flytta dig när ett fält på vägen blir rött.'}
 ];
 const bossOf = L => BOSSES[(L / 5 - 1) % BOSSES.length];
 
@@ -156,7 +158,10 @@ const THEMES = [
    tree:'#2f5e46', tree2:'#3f7a5a', trunk:'#5a4330', props:['pine','pine','pine','snowrock'], amb:'snow', skin:'yeti'},
   {name:'Vulkanen', sky:['#2e0f10','#a8401c'], hills:['#231615','#3a221e'], shape:'volcano',
    g1:'#3a302d', g2:'#332a27', road:'#26211f', road2:'#2e2826', stripe:'#ff8a3a', kerbA:'#ff6a1f', kerbB:'#1a1514',
-   tree:'#2a2220', tree2:'#3a2e2a', trunk:'#1c1614', props:['lavarock','lavarock','deadtree'], amb:'embers', lava:true, skin:'magma'}
+   tree:'#2a2220', tree2:'#3a2e2a', trunk:'#1c1614', props:['lavarock','lavarock','deadtree'], amb:'embers', lava:true, skin:'magma'},
+  {name:'Stormkusten', sky:['#5b8fb8','#d3e6ef'], hills:['#2f7fae','#4a9cc8'], shape:'sea',
+   g1:'#e8d29a', g2:'#dfc68b', road:'#9b7348', road2:'#a67d50', stripe:'#f4ead2', kerbA:'#e2463a', kerbB:'#f6f2e8',
+   tree:'#3f8a4a', tree2:'#5aa860', trunk:'#8a6a42', props:['palm','palm','buoy','crate'], amb:'spray', skin:'crab'}
 ];
 const chapterOf = L => Math.floor((L - 1) / 5);
 const themeFor = L => THEMES[chapterOf(L) % THEMES.length];
@@ -248,7 +253,7 @@ function spawnBoss(){
   const cycle = Math.floor((L / 5 - 1) / BOSSES.length);
   const hp = Math.round(cfg.hp * 180 * (1 + cycle * .3));
   boss = {boss:true, kind:B.kind, name:B.name, x:PW/2, y:-120, r:B.kind === 'heli' ? 38 : 46, hp, max:hp,
-    hit:0, ph:0, shell:2.5, bomb:3, minion:3, shield:0, shieldT:5, f:1 + (L/5 - 1) * .12, extra:cycle, timer:45, charging:false};
+    hit:0, ph:0, shell:2.5, bomb:3, minion:3, slam:2, shield:0, shieldT:5, f:1 + (L/5 - 1) * .12, extra:cycle, timer:45, charging:false};
   enemies.push(boss);
   bossSpawned = true; SFX.bossIn();
   seeKey('boss:' + B.kind);
@@ -436,6 +441,7 @@ function update(dt){
     else {
       e.y += (speed + e.walk) * dt;
       e.x += clamp(squad.x - e.x, -1, 1) * Math.min(40, 10 + L * 1.2) * dt;
+      if (e.type === 'zigzag') e.x += Math.sin(t * 2.6 + e.wob) * 120 * dt;
     }
     e.x = clamp(e.x, e.r, PW - e.r);
     if (e.hit > 0) e.hit -= dt;
@@ -509,6 +515,16 @@ function update(dt){
         rings.push({X:p.X, Y:p.Y, r:4, max:h.r * 1.6 * p.s, life:.4});
         if (Math.abs(squad.x - h.tx) < h.r + cr * .55) lose(Math.max(3, Math.ceil(squad.n * .22)), p.X, p.Y - 70, 'Träff');
       }
+    } else if (h.type === 'slam'){
+      if (!h.fired){
+        h.t -= dt;
+        if (h.t <= 0){
+          h.fired = true; h.life = .4;
+          const p = proj(h.x, SQY);
+          burst(p.X, p.Y - 10, '#8fd8ff', 22, 1.4); SFX.boom(false); shake = Math.max(shake, .25);
+          if (Math.abs(squad.x - h.x) < h.r + cr * .45) lose(Math.max(3, Math.ceil(squad.n * .22)), p.X, p.Y - 70, 'Tentakel');
+        }
+      } else if ((h.life -= dt) <= 0) h.dead = true;
     } else {
       h.t -= dt;
       if (h.t <= 0){
@@ -541,6 +557,7 @@ function updateBoss(e, dt){
   }
   if (e.kind === 'heli') e.x = PW/2 + Math.sin(e.ph * 1.25 * Math.min(f, 1.6)) * (PW/2 - 50);
   else if (e.kind === 'hive') e.x = PW/2 + Math.sin(e.ph * .6) * (PW/2 - 70);
+  else if (e.kind === 'kraken') e.x = PW/2 + Math.sin(e.ph * .45) * (PW/2 - 90);
   else e.x += clamp(squad.x - e.x, -1, 1) * (e.kind === 'titan' ? 70 : 45) * dt;
 
   if (e.kind === 'tank' || e.kind === 'titan'){
@@ -568,6 +585,21 @@ function updateBoss(e, dt){
     if (e.shield > 0) e.shield -= dt;
     e.shieldT -= dt;
     if (e.shieldT <= 0){ e.shield = 2.5; e.shieldT = 8 / Math.min(f, 1.6); }
+  }
+  if (e.kind === 'kraken'){
+    e.slam -= dt;
+    if (e.slam <= 0){
+      const n = 1 + (f > 1.4 ? 1 : 0) + e.extra, xs = [clamp(squad.x, 34, PW - 34)];
+      while (xs.length < n) xs.push(clamp(squad.x + (Math.random() < .5 ? -1 : 1) * (75 + Math.random() * 70), 34, PW - 34));
+      for (const x of xs) hazards.push({type:'slam', x, t:1.2, T:1.2, r:34});
+      e.slam = 2.4 / f;
+    }
+    e.minion -= dt;
+    if (e.minion <= 0){
+      const n = 2 + Math.floor(f);
+      for (let i = 0; i < n; i++) spawnEnemy(clamp(e.x + (i - (n-1)/2) * 46, 20, PW - 20), e.y + 30, .5);
+      e.minion = 6 / f;
+    }
   }
   if (e.kind === 'hive'){
     e.minion -= dt;
@@ -616,6 +648,23 @@ function label(txt, X, Y, size, col = '#fff', stroke = 'rgba(0,0,0,.55)'){
 
 function drawHills(T){
   const [h1, h2] = T.hills;
+  if (T.shape === 'sea'){
+    // hav med vågor, en udde och en fyr vars ljus sveper
+    cx.fillStyle = h2; cx.fillRect(0, HZ - 24, W, 24);
+    cx.fillStyle = h1; cx.beginPath(); cx.moveTo(W * .7, HZ - 24); cx.quadraticCurveTo(W * .85, HZ - 48, W, HZ - 40); cx.lineTo(W, HZ - 24); cx.fill();
+    cx.strokeStyle = 'rgba(255,255,255,.55)'; cx.lineWidth = 1.5;
+    for (const [row, sp] of [[HZ - 17, 14], [HZ - 7, 22]])
+      for (let x = -40 + (t * sp) % 40; x < W; x += 40){ cx.beginPath(); cx.moveTo(x, row); cx.quadraticCurveTo(x + 6, row - 3, x + 12, row); cx.stroke(); }
+    const LX = W * .16, base = HZ - 22, top = HZ - 64;
+    cx.fillStyle = h1; cx.beginPath(); cx.ellipse(LX, base + 2, 20, 6, 0, 0, 7); cx.fill();
+    cx.fillStyle = '#f4f1ea'; cx.beginPath(); cx.moveTo(LX - 7, base); cx.lineTo(LX - 4, top); cx.lineTo(LX + 4, top); cx.lineTo(LX + 7, base); cx.fill();
+    cx.fillStyle = '#d8392f'; for (const k of [.25, .6]){ const y = base + (top - base) * k, w = 7 - 3 * k; cx.fillRect(LX - w, y - 4, w * 2, 8); }
+    cx.fillStyle = '#2b2b2b'; cx.fillRect(LX - 5, top - 9, 10, 9);
+    cx.fillStyle = '#ffe36b'; cx.beginPath(); cx.arc(LX, top - 5, 3, 0, 7); cx.fill();
+    const a = Math.sin(t * .9);
+    cx.fillStyle = 'rgba(255,240,170,.22)'; cx.beginPath(); cx.moveTo(LX, top - 5); cx.lineTo(LX + 160 * a, top - 22); cx.lineTo(LX + 160 * a, top + 12); cx.fill();
+    return;
+  }
   if (T.shape === 'peaks'){
     const pk = [[.05,.6],[.2,1],[.36,.7],[.55,1.15],[.72,.75],[.88,1],[1.02,.6]];
     for (const [x, h] of pk){
@@ -691,12 +740,13 @@ function drawWorld(){
 
 function stepAmb(dt){
   const T = theme(); if (!T.amb) return;
-  const rate = {dust:14, pollen:8, snow:40, embers:16}[T.amb];
+  const rate = {dust:14, pollen:8, snow:40, embers:16, spray:20}[T.amb];
   let n = rate * dt + Math.random();
   while (n-- > 1 && amb.length < 160){
     if (T.amb === 'snow') amb.push({x:Math.random() * W, y:-5, vx:-10 + Math.random() * 20, vy:40 + Math.random() * 50, r:1 + Math.random() * 2.2, life:12, col:'#ffffff'});
     else if (T.amb === 'embers') amb.push({x:Math.random() * W, y:H + 5, vx:-15 + Math.random() * 30, vy:-(40 + Math.random() * 60), r:1 + Math.random() * 1.8, life:4 + Math.random() * 4, col:Math.random() < .5 ? '#ff8a3a' : '#ffc04a'});
     else if (T.amb === 'pollen') amb.push({x:Math.random() * W, y:HZ + Math.random() * (H - HZ), vx:-8 + Math.random() * 16, vy:-6 - Math.random() * 10, r:1.2 + Math.random() * 1.6, life:3 + Math.random() * 3, col:'#fff2a0'});
+    else if (T.amb === 'spray') amb.push({x:-5, y:HZ + Math.random() * (H - HZ) * .8, vx:110 + Math.random() * 90, vy:-10 + Math.random() * 6, r:1 + Math.random() * 1.8, life:6, col:'#e8f6ff'});
     else amb.push({x:-5, y:HZ + Math.random() * (H - HZ) * .7, vx:60 + Math.random() * 80, vy:-4 + Math.random() * 8, r:.8 + Math.random() * 1.6, life:8, col:'#f3dcae'});
   }
   for (const a of amb){ a.x += (a.vx + Math.sin(t * 2 + a.r * 9) * 8) * dt; a.y += a.vy * dt; a.life -= dt; }
@@ -719,6 +769,22 @@ function drawFinish(){
 
 function drawMarkers(){
   for (const h of hazards){
+    if (h.type === 'slam'){
+      // tentakelslag: ett rött fält längs vägen som fylls, sedan själva tentakeln
+      const y0 = SQY - 200, y1 = SQY + 60;
+      if (!h.fired){
+        const k = 1 - h.t / h.T;
+        quad(h.x - h.r, y0, h.x + h.r, y1, `rgba(255,50,30,${.12 + .3 * k})`);
+        quad(h.x - h.r * k, y0, h.x + h.r * k, y1, `rgba(255,59,43,${.3 * k})`);
+      } else {
+        cx.globalAlpha = Math.min(1, h.life / .25);
+        quad(h.x - h.r * .7, y0, h.x + h.r * .7, y1, '#7a3590');
+        quad(h.x - h.r * .3, y0, h.x + h.r * .3, y1, '#a65cbf');
+        for (let y = y0 + 30; y < y1; y += 40) quad(h.x - 6, y, h.x + 6, y + 14, '#e3b7ef');
+        cx.globalAlpha = 1;
+      }
+      continue;
+    }
     const x = h.type === 'shell' ? h.tx : h.x;
     const p = proj(x, SQY), rx = h.r * p.s;
     const k = h.type === 'shell' ? h.pr : 1 - h.t / h.T;
@@ -802,6 +868,30 @@ function drawProp(p){
       cx.lineWidth = 2.2 * s; cx.beginPath();
       cx.moveTo(X, Y - 22*s); cx.lineTo(X - 12*s, Y - 34*s); cx.moveTo(X, Y - 28*s); cx.lineTo(X + 11*s, Y - 40*s);
       cx.moveTo(X - 7*s, Y - 29*s); cx.lineTo(X - 9*s, Y - 40*s); cx.stroke();
+      break;
+    case 'palm': {
+      shadow(X, Y, 16 * s, .2);
+      const tx = X + 8*s, ty = Y - 42*s, sw = Math.sin(t * 1.5 + p.hue * 6) * .12;
+      cx.save(); cx.lineCap = 'round';
+      cx.strokeStyle = T.trunk; cx.lineWidth = 4.5 * s;
+      cx.beginPath(); cx.moveTo(X, Y); cx.quadraticCurveTo(X - 2*s, Y - 24*s, tx, ty); cx.stroke();
+      cx.fillStyle = T.tree;
+      for (let k = 0; k < 5; k++){ cx.save(); cx.translate(tx, ty); cx.rotate(-Math.PI/2 + (k - 2) * .72 + sw); cx.beginPath(); cx.ellipse(11*s, 0, 12*s, 3.6*s, .25, 0, 7); cx.fill(); cx.restore(); }
+      cx.fillStyle = '#6a4a2a'; cx.beginPath(); cx.arc(tx - 2*s, ty + 3*s, 2.6*s, 0, 7); cx.arc(tx + 2.5*s, ty + 3.5*s, 2.6*s, 0, 7); cx.fill();
+      cx.restore();
+      break; }
+    case 'buoy': {
+      const bob = Math.sin(t * 2 + p.hue * 7) * 2 * s;
+      shadow(X, Y, 9 * s, .2);
+      cx.fillStyle = '#e2463a'; cx.beginPath(); cx.moveTo(X - 8*s, Y - 4*s + bob); cx.lineTo(X, Y - 24*s + bob); cx.lineTo(X + 8*s, Y - 4*s + bob); cx.fill();
+      cx.fillStyle = '#f6f2e8'; cx.fillRect(X - 5*s, Y - 14*s + bob, 10*s, 4*s);
+      cx.fillStyle = '#2a2a2a'; cx.fillRect(X - 9*s, Y - 5*s + bob, 18*s, 4*s);
+      break; }
+    case 'crate':
+      shadow(X, Y, 12 * s, .25);
+      cx.fillStyle = '#b08850'; cx.strokeStyle = '#6e5230'; cx.lineWidth = 1.5 * s;
+      cx.fillRect(X - 10*s, Y - 18*s, 20*s, 18*s); cx.strokeRect(X - 10*s, Y - 18*s, 20*s, 18*s);
+      cx.beginPath(); cx.moveTo(X - 10*s, Y - 18*s); cx.lineTo(X + 10*s, Y); cx.moveTo(X + 10*s, Y - 18*s); cx.lineTo(X - 10*s, Y); cx.stroke();
       break;
     default: // tree
       shadow(X, Y, 20 * s, .22);
@@ -900,6 +990,27 @@ function drawEnemy(e, P, skinO){
     eyes(cy - r*.2, r*.16, '#fff', '#111', true);
     cx.fillStyle = '#2a3346'; cx.beginPath(); cx.ellipse(X, cy + r*.25, r*.3, r*.13, 0, 0, Math.PI); cx.fill();
     cx.fillStyle = '#fff'; cx.fillRect(X - r*.2, cy + r*.25, r*.1, r*.1); cx.fillRect(X + r*.1, cy + r*.25, r*.1, r*.1);
+  } else if (skin === 'crab'){
+    // krabba: bred kropp, ögon på skaft, klor som nyper
+    const shell = flash ? '#fff' : hexMix('#e2553a', e.col, .3);
+    cx.strokeStyle = '#5a1d10'; cx.lineWidth = Math.max(1.2, r*.09);
+    for (let k = 0; k < 3; k++) for (const d of [-1, 1]){
+      const a2 = Math.sin(t * 16 + k * 2 + e.wob + (d > 0 ? 1.5 : 0)) * .2, ly = cy + r*.05 + k * r*.22;
+      cx.beginPath(); cx.moveTo(X + d*r*.7, ly); cx.lineTo(X + d*r*1.15, ly - r*.2 + a2*r); cx.lineTo(X + d*r*1.3, ly + r*.3); cx.stroke();
+    }
+    const pinch = .25 + .2 * Math.sin(t * 7 + e.wob);
+    cx.fillStyle = shell; cx.strokeStyle = 'rgba(0,0,0,.5)'; cx.lineWidth = 2*s;
+    for (const d of [-1, 1]){
+      const kx = X + d*r*1.05, ky = cy - r*.75;
+      cx.beginPath(); cx.moveTo(X + d*r*.6, cy - r*.2); cx.lineTo(kx, ky + r*.2); cx.stroke();
+      cx.beginPath(); cx.moveTo(kx, ky); cx.arc(kx, ky, r*.34, -Math.PI/2 + pinch, Math.PI*1.5 - pinch); cx.closePath(); cx.fill(); cx.stroke();
+    }
+    cx.beginPath(); cx.ellipse(X, cy, r*.95, r*.7, 0, 0, 7); cx.fill(); cx.stroke();
+    cx.fillStyle = 'rgba(255,255,255,.25)'; cx.beginPath(); cx.ellipse(X - r*.35, cy - r*.3, r*.25, r*.14, -.3, 0, 7); cx.fill();
+    cx.strokeStyle = '#5a1d10'; cx.lineWidth = Math.max(1.2, r*.08);
+    for (const d of [-1, 1]){ cx.beginPath(); cx.moveTo(X + d*r*.2, cy - r*.5); cx.lineTo(X + d*r*.33, cy - r*.95); cx.stroke(); }
+    eyes(cy - r*1.0, r*.17);
+    cx.beginPath(); cx.moveTo(X - r*.2, cy + r*.25); cx.quadraticCurveTo(X, cy + r*.12, X + r*.2, cy + r*.25); cx.stroke();
   } else {
     // magmagolem: kantig sten med glödande sprickor
     const glow = hexMix('#ff7a2a', e.col, .35);
@@ -930,6 +1041,10 @@ function drawEnemy(e, P, skinO){
   if (e.type === 'runner'){
     cx.strokeStyle = 'rgba(255,255,255,.6)'; cx.lineWidth = 2*s;
     for (const d of [-.4, 0, .4]){ cx.beginPath(); cx.moveTo(p.X + d*r, cy - r*1.2); cx.lineTo(p.X + d*r, cy - r*1.9); cx.stroke(); }
+  }
+  if (e.type === 'zigzag'){
+    cx.strokeStyle = 'rgba(255,255,255,.75)'; cx.lineWidth = 2*s;
+    for (const d of [-1, 1]){ const x0 = p.X + d*r*1.4; cx.beginPath(); cx.moveTo(x0, cy - r*.5); cx.lineTo(x0 + d*r*.2, cy - r*.25); cx.lineTo(x0, cy); cx.lineTo(x0 + d*r*.2, cy + r*.25); cx.stroke(); }
   }
   if (e.split){
     cx.strokeStyle = 'rgba(0,0,0,.5)'; cx.lineWidth = 2*s;
@@ -965,6 +1080,27 @@ function drawBoss(e, P){
     cx.strokeStyle = 'rgba(74,44,5,.6)'; cx.lineWidth = 4*s;
     for (let i = -2; i <= 2; i++){ cx.beginPath(); cx.ellipse(p.X, y + i * r * .32, r * Math.sqrt(1 - (i*.32)**2) * .98, r * .08, 0, 0, Math.PI); cx.stroke(); }
     cx.fillStyle = '#2a1500'; cx.beginPath(); cx.arc(p.X, y + r*.35, r*.22, 0, 7); cx.fill();
+    cyMid = y;
+  } else if (e.kind === 'kraken'){
+    shadow(p.X, p.Y, r * 1.3, .3);
+    const y = p.Y - r * .9 - 4*s;
+    cx.save(); cx.lineCap = 'round';
+    for (let i = 0; i < 6; i++){
+      const d = i < 3 ? -1 : 1, k = i % 3, sw = Math.sin(t * 3 + i * 1.3);
+      const sx = p.X + d * r * (.35 + k * .2), sy = y + r * .55;
+      cx.strokeStyle = flash ? '#fff' : '#5e2470'; cx.lineWidth = (12 - k * 2) * s;
+      cx.beginPath(); cx.moveTo(sx, sy);
+      cx.quadraticCurveTo(sx + d * r * (.7 + k * .3), sy + r * (.2 + sw * .25), sx + d * r * (1.1 + k * .35), sy - r * (.3 + sw * .4)); cx.stroke();
+    }
+    cx.restore();
+    cx.fillStyle = flash ? '#fff' : '#8a3fa0'; cx.strokeStyle = '#2e0f38'; cx.lineWidth = 3*s;
+    cx.beginPath(); cx.ellipse(p.X, y - r*.2, r*.85, r*1.05, 0, 0, 7); cx.fill(); cx.stroke();
+    cx.fillStyle = 'rgba(255,255,255,.18)';
+    for (const [a, b, c] of [[-.4,-.75,.16],[.35,-.95,.12],[.12,-.5,.1]]){ cx.beginPath(); cx.arc(p.X + a*r, y + b*r, c*r, 0, 7); cx.fill(); }
+    for (const d of [-1, 1]){
+      cx.fillStyle = '#ffe36b'; cx.beginPath(); cx.ellipse(p.X + d*r*.35, y + r*.05, r*.2, r*.16, 0, 0, 7); cx.fill();
+      cx.fillStyle = '#111'; cx.fillRect(p.X + d*r*.35 - r*.04, y - r*.07, r*.08, r*.24);
+    }
     cyMid = y;
   } else {
     const big = e.kind === 'titan' ? 1.15 : 1;
@@ -1114,7 +1250,7 @@ function complete(){
   hazards = []; enemies = [];
   setTimeout(() => openShop(), 1300);
 }
-const TYPE_NAMES = {grunt:'Vanliga', runner:'Löpare', brute:'Bjässar', armor:'Pansrade', split:'Delare'};
+const TYPE_NAMES = {grunt:'Vanliga', runner:'Löpare', brute:'Bjässar', armor:'Pansrade', split:'Delare', zigzag:'Sicksackare'};
 const totalKills = k => Object.values(k).reduce((a, b) => a + b, 0);
 const topKill = k => { const e = Object.entries(k).sort((a, b) => b[1] - a[1])[0]; return e ? `${TYPE_NAMES[e[0]] || e[0]} (${fmtN(e[1])})` : '–'; };
 const STAT_ROWS = [
@@ -1291,31 +1427,35 @@ $('resetBtn').onclick = () => {
   newRun(); openMenu();
 };
 // ---------- bestiarium ----------
-const SKINS = ['beetle','bee','yeti','magma'];
+const SKINS = ['beetle','bee','yeti','magma','crab'];
 const BEAST_NAMES = {
-  beetle:{grunt:'Sandbagge', runner:'Ökenlöpare', brute:'Hornbagge', armor:'Pansarbagge', split:'Klyvbagge'},
-  bee:   {grunt:'Geting', runner:'Pilgeting', brute:'Bålgeting', armor:'Plåtgeting', split:'Svärmgeting'},
-  yeti:  {grunt:'Snöyeti', runner:'Snöstormare', brute:'Bergsyeti', armor:'Isyeti', split:'Tvillingyeti'},
-  magma: {grunt:'Magmagolem', runner:'Glödgnista', brute:'Lavajätte', armor:'Basaltgolem', split:'Klyvgolem'}
+  beetle:{grunt:'Sandbagge', runner:'Ökenlöpare', brute:'Hornbagge', armor:'Pansarbagge', split:'Klyvbagge', zigzag:'Sicksackbagge'},
+  bee:   {grunt:'Geting', runner:'Pilgeting', brute:'Bålgeting', armor:'Plåtgeting', split:'Svärmgeting', zigzag:'Fladdergeting'},
+  yeti:  {grunt:'Snöyeti', runner:'Snöstormare', brute:'Bergsyeti', armor:'Isyeti', split:'Tvillingyeti', zigzag:'Slalomyeti'},
+  magma: {grunt:'Magmagolem', runner:'Glödgnista', brute:'Lavajätte', armor:'Basaltgolem', split:'Klyvgolem', zigzag:'Hoppgnista'},
+  crab:  {grunt:'Strandkrabba', runner:'Springkrabba', brute:'Jättekrabba', armor:'Pansarhummer', split:'Klyvkrabba', zigzag:'Sidokrabba'}
 };
 const SKIN_LORE = {
   beetle:'Gräver upp sig ur sanden längs Ökenfronten.',
   bee:'Svärmar från bikuporna på ängen och flyger strax ovanför marken.',
   yeti:'Lurviga varelser som vaktar Bergspasset.',
-  magma:'Smält sten som fått liv i Vulkanens glöd.'
+  magma:'Smält sten som fått liv i Vulkanens glöd.',
+  crab:'Kryper upp ur vågorna längs Stormkusten.'
 };
 const TYPE_ABIL = {
   grunt:'Går mot truppen och styr långsamt åt ditt håll. Missad kostar soldater.',
   runner:'Mer än dubbelt så snabb men har knappt hälften så mycket liv. Svår att hinna skjuta.',
   brute:'Långsam men tål drygt tre gånger så mycket som en vanlig. Tar många soldater om den når fram.',
   armor:'Pansaret halverar all skada utom från raketer.',
-  split:'Delar sig i två mindre och snabbare kopior när den fälls.'
+  split:'Delar sig i två mindre och snabbare kopior när den fälls.',
+  zigzag:'Rör sig i sicksack från sida till sida. Svår att sikta på.'
 };
 const BOSS_ABIL = {
   tank:'Kör efter truppen i sidled och skjuter granater. Röda ringar visar var de landar.',
   hive:'Släpper ut småkryp i omgångar och skyddar sig med en sköld som stoppar alla skott.',
   heli:'Svischar fram och tillbaka över vägen och fäller bomber. Marken blir röd innan de smäller.',
-  titan:'Har granater, bomber och sköld på en gång. Det svåraste bossen kan.'
+  titan:'Har granater, bomber och sköld på en gång. Det svåraste bossen kan.',
+  kraken:'Slår ner tentakler i fält över vägen och skickar fram småkrabbor. Fältet blir rött innan slaget kommer.'
 };
 const BOSS_COMMON = 'Alla bossar blir rasande under halva livet och anfaller om de inte fällts inom 45 sekunder.';
 function firstPossible(c, from){
@@ -1362,7 +1502,7 @@ function drawPortraits(){
     try {
       if (b.boss){
         const e = {boss:true, kind:b.boss, r:b.boss === 'heli' ? 38 : 46, hit:0, shield:0, x:0, y:0};
-        const sc = b.boss === 'heli' ? .9 : 1;
+        const sc = b.boss === 'heli' ? .9 : b.boss === 'kraken' ? .62 : 1;
         drawBoss(e, {X:72, Y:b.boss === 'heli' ? 128 : 118, s:sc});
       } else {
         const T = ETYPES[b.type];
@@ -1473,7 +1613,8 @@ const MUSIC = [
   {bpm:92,  root:50, scale:[0,1,4,5,7,8,10], prog:[0,0,5,4], lead:'triangle', bass:'triangle', drums:'k..h..k.s..h.k.h', dens:.35}, // Ökenfronten
   {bpm:118, root:60, scale:[0,2,4,7,9],      prog:[0,3,1,4], lead:'square',   bass:'triangle', drums:'k.h.s.h.k.hks.h.', dens:.5},  // Bikupeängen
   {bpm:84,  root:57, scale:[0,2,3,5,7,9,10], prog:[0,5,3,4], lead:'sine',     bass:'sine',     drums:'k...h...s...h..h', dens:.3},  // Bergspasset
-  {bpm:108, root:40, scale:[0,2,3,5,7,8,10], prog:[0,5,6,4], lead:'sawtooth', bass:'sawtooth', drums:'k.kh.ks.k.kh.ksh', dens:.4}   // Vulkanen
+  {bpm:108, root:40, scale:[0,2,3,5,7,8,10], prog:[0,5,6,4], lead:'sawtooth', bass:'sawtooth', drums:'k.kh.ks.k.kh.ksh', dens:.4},  // Vulkanen
+  {bpm:100, root:55, scale:[0,2,4,5,7,9,10], prog:[0,4,6,3], lead:'triangle', bass:'triangle', drums:'k..hs.h.k.hhs..h', dens:.45}  // Stormkusten
 ];
 const deg = (sc, i) => sc[((i % sc.length) + sc.length) % sc.length] + 12 * Math.floor(i / sc.length);
 const seeded = n => { n = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); n ^= n >>> 13; n = Math.imul(n, 0xc2b2ae35); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
