@@ -1,3 +1,6 @@
+/* Typsnitten ligger i fonts/ (SIL OFL, se OFL-*.txt) så att inget hämtas från Google. */
+@font-face{font-family:Bungee;font-style:normal;font-weight:400;font-display:swap;src:url(fonts/bungee.woff2) format('woff2')}
+@font-face{font-family:Figtree;font-style:normal;font-weight:300 900;font-display:swap;src:url(fonts/figtree.woff2) format('woff2')}
 :root{
   color-scheme: light;
   --bg:#bfe3f2; --panel:#fffaf0; --panel2:#f1ead8; --ink:#1f2433; --muted:#545a6b;

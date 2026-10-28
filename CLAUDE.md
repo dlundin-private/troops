@@ -10,7 +10,7 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt lig
 ## Regler
 
 - **Allt UI-språk är svenska.** Typografiska tecken i text som visas: ’ och ” ”, minustecken − (U+2212) i siffror som “−5”.
-- **Inga beroenden, inget byggsteg.** Inga npm-paket i spelet. Externt laddas bara Google Fonts (Bungee, Figtree) med fallback.
+- **Inga beroenden, inget byggsteg.** Inga npm-paket i spelet. Inget laddas externt. Typsnitten Bungee och Figtree ligger i `fonts/` (SIL OFL, licenstexten bredvid) och laddas via `@font-face` i `style.css`. Länka inte till Google Fonts, det skickar besökarens IP-adress till Google.
 - **Ingen pay-to-win, inga annonser, inga riktiga köp.** Mynt tjänas bara i spelet.
 - **Sparning:** `localStorage`-nycklarna `truppen-v3` (pågående omgång), `truppen-meta` (förmågor, rekord, bestiarium), `truppen-parent` (föräldraläge) och `truppen-sound` (musik/ljud på eller av). Ändra inte formatet utan migrering – spelare har sparad progress. Lägg till nya fält med standardvärden via `Object.assign(fresh(), …)`-mönstret.
 - Både ljust och mörkt läge ska fungera (`prefers-color-scheme` och `data-theme`).
