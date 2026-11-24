@@ -35,7 +35,7 @@
         <span style="color:var(--bad)">− färre</span>
         <span style="color:var(--gold)">byt vapen</span>
       </div>
-      <div class="btnrow"><button class="go" id="play">Spela</button><button class="go alt" id="bestMenu">Bestiarium</button></div>
+      <div class="btnrow"><button class="go" id="play">Spela</button><button class="go alt" id="bestMenu">Bestiarium</button><button class="go alt" id="skinMenu">Uniformer</button></div>
       <div><button class="link" id="resetBtn" hidden>Börja om från nivå 1</button></div>
       <div class="toggles"><button class="tog" id="musicBtn"></button><button class="tog" id="sfxBtn"></button></div>
       <p class="free">Inga annonser. Inga köp med riktiga pengar.</p>
@@ -94,7 +94,16 @@
       <div id="ups"></div>
       <h3>Vapen</h3>
       <div id="weps"></div>
-      <div class="btnrow"><button class="go" id="next">Starta nivå 1</button><button class="go alt" id="bestShop">Bestiarium</button></div>
+      <div class="btnrow"><button class="go" id="next">Starta nivå 1</button><button class="go alt" id="bestShop">Bestiarium</button><button class="go alt" id="skinShop">Uniformer</button></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="skins" hidden>
+    <div class="card">
+      <h2>Uniformer</h2>
+      <p>Lås upp nya uniformer genom att spela. De ändrar bara hur truppen ser ut.</p>
+      <div class="skingrid" id="skinList"></div>
+      <button class="go" id="skinsClose">Tillbaka</button>
     </div>
   </div>
 

@@ -29,6 +29,7 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt lig
 | skärmar | nivå klar/död, statistiktabell, förmågor, förråd, meny |
 | bestiarium | namn/texter per skin×typ, porträtt ritas med samma `drawEnemy` på små canvas |
 | ljud | Web Audio, inga filer. `SFX.*` för händelser, `MUSIC` = ett generativt 8-taktsmönster per kapiteltema, trummor bara under spel |
+| uniformer | `UNIFORMS` (bara utseende), `need` = boss/kills/level/bestiary. `checkUnlocks()` vid bossfall, klarad nivå, slut på omgång och nytt i bestiariet. `drawSoldier()` ritar en soldat |
 | föräldraläge | kod, speltid (`left` i sekunder, räknas bara i `play`), aktivitet. Tiden slut → `state = 'locked'`, rätt kod fyller på och går till paus |
 | styrning / loop | pekare + tangenter, `requestAnimationFrame`-loop |
 
@@ -43,6 +44,7 @@ Webbläsarspel (crowd-runner/shooter) utan byggsteg och utan beroenden. Allt lig
 - **Portar:** växer när man skjuter på dem i takt med vapnets skada/s (`share`), inte uppgraderingar.
 - **Liv:** 3 per omgång (+ förmågan Sjunde livet), påfylls vid boss, 12,5 % chans per nivå att ett hjärta dyker upp på vägen.
 - **Förmågor:** max 3, kan bara ersättas. Styrka efter dödsnivå `q = (L−1)/29`.
+- **Uniformer:** ändrar bara utseendet, aldrig styrkan. Låses upp genom att spela (en per boss plus 1 000 fällda, nivå 30 och fullt bestiarium), aldrig med mynt. Sparas i `meta` (`skin`, `skinsGot` = annonserade i spelet, `skinsKnown` = visade i väljaren).
 
 ## Testa
 

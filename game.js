@@ -8,7 +8,7 @@ const FONT = 'Bungee, Impact, sans-serif';
 const freshStats = () => ({levels:0, dmg:0, coins:0, recruit:0, lost:0, kills:{}, bosses:0, maxN:0});
 const fresh = () => ({level:1, coins:0, up:{max:0, start:0, dmg:0, rate:0, armor:0}, weps:['gevar'], equip:'gevar', lives:3, run:freshStats(), att:freshStats()});
 let save = fresh();
-let meta = {perks:[], best:freshStats(), bestLevel:0, runs:0, allKills:{}, seen:{}};
+let meta = {perks:[], best:freshStats(), bestLevel:0, runs:0, allKills:{}, seen:{}, skin:'klassisk', skinsGot:[], skinsKnown:['klassisk']};
 try {
   const s = JSON.parse(localStorage.getItem('truppen-v3'));
   if (s && s.level) save = Object.assign(fresh(), s, {up:Object.assign(fresh().up, s.up), run:Object.assign(freshStats(), s.run), att:Object.assign(freshStats(), s.att)});
@@ -21,7 +21,7 @@ const maxLives = () => 3 + perkVal('life');
 function st(k, v){ save.run[k] += v; save.att[k] += v; }
 function stMax(n){ if (n > save.run.maxN) save.run.maxN = n; if (n > save.att.maxN) save.att.maxN = n; }
 function seeKey(key){
-  if (!meta.seen[key]){ meta.seen[key] = {lv:L, k:0}; if (state === 'play') addText(W/2, H*.24, 'Nytt i bestiariet!', C.gold, 16, 1.6); }
+  if (!meta.seen[key]){ meta.seen[key] = {lv:L, k:0}; if (state === 'play') addText(W/2, H*.24, 'Nytt i bestiariet!', C.gold, 16, 1.6); checkUnlocks(); }
   return meta.seen[key];
 }
 const skinKey = type => `${themeFor(L).skin}:${type || 'grunt'}`;
@@ -495,7 +495,7 @@ function update(dt){
         burst(p.X, p.Y - e.r*p.s, e.boss ? '#ffb347' : e.col, e.boss ? 50 : 14, e.boss ? 2 : 1);
         rings.push({X:p.X, Y:p.Y - e.r*p.s, r:4, max:(e.boss ? 160 : 40) * p.s, life:e.boss ? .6 : .35});
         if (!e.boss) SFX.kill();
-        if (e.boss){ SFX.boom(true); addText(W/2, H*.4, 'Bossen fälld!', C.gold, 32, 1.6); shake = .5; boss = null; hazards = []; st('bosses', 1); }
+        if (e.boss){ SFX.boom(true); addText(W/2, H*.4, 'Bossen fälld!', C.gold, 32, 1.6); shake = .5; boss = null; hazards = []; st('bosses', 1); checkUnlocks(); }
       }
     }
   }
@@ -1151,18 +1151,10 @@ for (let i = 0; i < 90; i++){ const a = i * 2.39996, r = 4.3 * Math.sqrt(i); SPO
 function drawSquad(){
   const n = Math.min(Math.max(squad.n, 0), 90);
   const list = SPOTS.slice(0, n).sort((a, b) => a.dy - b.dy);
-  const run = t * 16;
+  const run = t * 16, U = uniform();
   for (const sp of list){
     const p = proj(squad.x + sp.dx, SQY + sp.dy), s = p.s;
-    const ph = Math.sin(run + sp.i);
-    shadow(p.X, p.Y, 5.5*s, .3);
-    cx.fillStyle = '#2a2f3a';
-    cx.fillRect(p.X - 3*s, p.Y - 6*s + ph*1.5*s, 2.4*s, 6*s - ph*1.5*s);
-    cx.fillRect(p.X + .6*s, p.Y - 6*s - ph*1.5*s, 2.4*s, 6*s + ph*1.5*s);
-    cx.fillStyle = C.friend; rr(p.X - 4.5*s, p.Y - 15*s, 9*s, 10*s, 3*s); cx.fill();
-    cx.fillStyle = '#222'; cx.fillRect(p.X + 2.5*s, p.Y - 19*s, 2*s, 9*s);
-    cx.fillStyle = C.skin; cx.beginPath(); cx.arc(p.X, p.Y - 18*s, 3.4*s, 0, 7); cx.fill();
-    cx.fillStyle = C.friend2; cx.beginPath(); cx.arc(p.X, p.Y - 19*s, 4*s, Math.PI, 0); cx.fill();
+    drawSoldier(p.X, p.Y, s, Math.sin(run + sp.i), U);
     if (flashT > 0 && sp.i < 12){ cx.fillStyle = TYPES[squad.type].col; cx.beginPath(); cx.arc(p.X + 3.5*s, p.Y - 21*s, 3*s, 0, 7); cx.fill(); }
   }
   if (state === 'menu') return;
@@ -1230,7 +1222,7 @@ function draw(){
 
 // ---------- skärmar ----------
 function show(id, on){ $(id).hidden = !on; const c = on && $(id).querySelector('.card'); if (c) c.scrollTop = 0; }
-function hideAll(){ ['menu','paused','fail','shop','hud','perk','bestiary','parent','lock'].forEach(id => show(id, false)); }
+function hideAll(){ ['menu','paused','fail','shop','hud','perk','bestiary','skins','parent','lock'].forEach(id => show(id, false)); }
 
 function startLevel(){
   hideAll(); setupLevel(); state = 'play'; show('hud', true);
@@ -1241,6 +1233,7 @@ function complete(){
   const comp = 15 + L * 5, surv = Math.floor(Math.max(0, squad.n) * .3), bossB = cfg.boss ? 25 * L : 0;
   save.coins += comp + surv + bossB; st('coins', comp + surv + bossB); st('levels', 1);
   save.level = L + 1;
+  checkUnlocks();
   if (cfg.boss && save.lives < maxLives()){ save.lives = maxLives(); addText(W/2, H*.4 + 44, 'Liven påfyllda!', '#ff6b8a', 20, 1.4); }
   persist();
   lastResult = {won:true, L, rows:[['Fällda fiender', earn.kills], ['Full trupp', earn.over], ['Klarad nivå', comp], ['Överlevande', surv], ['Boss', bossB]].filter(r => r[1] > 0)};
@@ -1292,6 +1285,7 @@ function fail(){
     for (const k of ['levels','dmg','coins','recruit','lost','bosses','maxN']) b[k] = Math.max(b[k] || 0, r[k]);
     b.killsN = Math.max(b.killsN || 0, totalKills(r.kills));
     meta.bestLevel = Math.max(meta.bestLevel, L);
+    checkUnlocks();
     const bestView = Object.assign({}, b, {kills: meta.allKills});
     $('failTitle').textContent = 'Omgången är slut';
     $('failLives').innerHTML = '';
@@ -1539,6 +1533,113 @@ $('resume').onclick = resume;
 $('quit').onclick = () => { show('paused', false); state = 'play'; fail(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
+// ---------- uniformer ----------
+// Bara utseende. Låses upp genom att spela och sparas i meta, så de finns kvar mellan omgångar.
+// body/helmet null = spelets vanliga blå färger (som följer ljust och mörkt läge).
+const UNIFORMS = [
+  {id:'klassisk', name:'Klassisk',        body:null,      helmet:null,      legs:'#2a2f3a'},
+  {id:'oken',     name:'Ökenkamouflage',  body:'#c9a86a', helmet:'#8a7444', legs:'#5e5238', spots:'#9c8048', need:{boss:'tank'}},
+  {id:'geting',   name:'Getingrandig',    body:'#f2c230', helmet:'#1c1a14', legs:'#1c1a14', stripes:'#1c1a14', need:{boss:'hive'}},
+  {id:'sno',      name:'Snöjägare',       body:'#eef3f8', helmet:'#c9d6e3', legs:'#7d8796', goggles:true, need:{boss:'heli'}},
+  {id:'lava',     name:'Lavagardet',      body:'#3a2e2b', helmet:'#ff7a2a', legs:'#1c1614', glow:'#ff9a3c', need:{boss:'titan'}},
+  {id:'pirat',    name:'Piraterna',       body:'#f6f2e8', helmet:'#d8392f', legs:'#2b3a55', stripes:'#2b3a55', need:{boss:'kraken'}},
+  {id:'rod',      name:'Röda bataljonen', body:'#d8392f', helmet:'#8e1f18', legs:'#2a2f3a', need:{kills:1000}},
+  {id:'skugga',   name:'Skuggtruppen',    body:'#23252e', helmet:'#111218', legs:'#111218', band:'#f4f4f4', need:{level:30}},
+  {id:'guld',     name:'Guldtruppen',     body:'#f2b01e', helmet:'#c98a0c', legs:'#7a5a12', shine:true, need:{bestiary:true}}
+];
+const numSv = n => Math.round(n).toLocaleString('sv-SE');
+const bestTotal = () => SKINS.length * Object.keys(ETYPES).length + BOSSES.length;
+function uniformNeed(u){
+  const n = u.need;
+  if (!n) return {ok:true, txt:'Finns från början'};
+  if (n.boss){
+    const i = BOSSES.findIndex(b => b.kind === n.boss);
+    return {ok:((meta.seen['boss:' + n.boss] || {}).k || 0) > 0, txt:`Fäll ${BOSSES[i].name} på nivå ${(i + 1) * 5}`};
+  }
+  if (n.kills){ const k = totalKills(meta.allKills); return {ok:k >= n.kills, txt:`Fäll ${numSv(n.kills)} fiender (${numSv(Math.min(k, n.kills))} av ${numSv(n.kills)})`}; }
+  if (n.level){ const b = Math.max(meta.bestLevel, save.level); return {ok:b >= n.level, txt:`Nå nivå ${n.level} (bästa hittills: ${b})`}; }
+  const seen = Object.keys(meta.seen).length, tot = bestTotal();
+  return {ok:seen >= tot, txt:`Upptäck hela bestiariet (${Math.min(seen, tot)} av ${tot})`};
+}
+const uniform = () => UNIFORMS.find(u => u.id === meta.skin && uniformNeed(u).ok) || UNIFORMS[0];
+// Nya uniformer annonseras en gång i spelet och får en ”Ny”-etikett tills de visats i väljaren.
+function checkUnlocks(silent){
+  for (const u of UNIFORMS){
+    if (!u.need || meta.skinsGot.includes(u.id) || !uniformNeed(u).ok) continue;
+    meta.skinsGot.push(u.id);
+    if (!silent){ addText(W/2, H*.2, `Ny uniform: ${u.name}!`, C.gold, 20, 2.2); SFX.life(); }
+  }
+  if (!silent) persist();
+  skinBadge();
+}
+const newSkins = () => UNIFORMS.filter(u => uniformNeed(u).ok && !meta.skinsKnown.includes(u.id));
+function skinBadge(){
+  const n = newSkins().length;
+  for (const id of ['skinMenu', 'skinShop']) $(id).innerHTML = 'Uniformer' + (n ? ' <span class="tag">Ny</span>' : '');
+}
+
+function drawSoldier(X, Y, s, ph, U){
+  shadow(X, Y, 5.5*s, .3);
+  cx.fillStyle = U.legs;
+  cx.fillRect(X - 3*s, Y - 6*s + ph*1.5*s, 2.4*s, 6*s - ph*1.5*s);
+  cx.fillRect(X + .6*s, Y - 6*s - ph*1.5*s, 2.4*s, 6*s + ph*1.5*s);
+  cx.fillStyle = U.body || C.friend; rr(X - 4.5*s, Y - 15*s, 9*s, 10*s, 3*s); cx.fill();
+  if (U.stripes){ cx.fillStyle = U.stripes; cx.fillRect(X - 4.5*s, Y - 12.5*s, 9*s, 1.6*s); cx.fillRect(X - 4.5*s, Y - 9*s, 9*s, 1.6*s); }
+  if (U.spots){ cx.fillStyle = U.spots; cx.beginPath(); cx.arc(X - 2*s, Y - 12*s, 1.5*s, 0, 7); cx.arc(X + 2*s, Y - 8*s, 1.3*s, 0, 7); cx.fill(); }
+  if (U.shine){ cx.fillStyle = 'rgba(255,255,255,.5)'; cx.fillRect(X - 3.4*s, Y - 14*s, 1.4*s, 7*s); }
+  cx.fillStyle = '#222'; cx.fillRect(X + 2.5*s, Y - 19*s, 2*s, 9*s);
+  cx.fillStyle = U.band ? U.helmet : C.skin; cx.beginPath(); cx.arc(X, Y - 18*s, 3.4*s, 0, 7); cx.fill();
+  if (U.band){ cx.fillStyle = U.band; cx.fillRect(X - 3.2*s, Y - 18.6*s, 6.4*s, 1.3*s); }
+  cx.fillStyle = U.helmet || C.friend2; cx.beginPath(); cx.arc(X, Y - 19*s, 4*s, Math.PI, 0); cx.fill();
+  if (U.glow){ cx.globalAlpha = .35 + .25 * Math.sin(t * 5 + X); cx.fillStyle = U.glow; cx.beginPath(); cx.arc(X, Y - 19*s, 5.4*s, Math.PI, 0); cx.fill(); cx.globalAlpha = 1; }
+  if (U.goggles){ cx.fillStyle = '#6ff3ff'; cx.fillRect(X - 3*s, Y - 19.6*s, 6*s, 1.6*s); }
+}
+
+let skinReturn = 'menu';
+function openSkins(from){
+  skinReturn = from;
+  hideAll(); state = 'skins';
+  const cur = uniform().id;
+  $('skinList').innerHTML = UNIFORMS.map((u, i) => {
+    const need = uniformNeed(u), isNew = need.ok && !meta.skinsKnown.includes(u.id);
+    const sub = !need.ok ? need.txt : u.id === cur ? 'Vald' : 'Tryck för att välja';
+    return `<button class="skinc${u.id === cur ? ' on' : ''}${need.ok ? '' : ' locked'}" data-skin="${u.id}"${need.ok ? '' : ' disabled'}>` +
+      `<canvas id="sk${i}" width="320" height="192"></canvas><b>${need.ok ? u.name : '???'}</b><small>${sub}</small>${isNew ? '<span class="tag">Ny</span>' : ''}</button>`;
+  }).join('');
+  for (const u of newSkins()) meta.skinsKnown.push(u.id);
+  persist(); skinBadge();
+  show('skins', true);
+  $('skinsClose').focus({preventScroll:true});
+}
+function drawSkinPreviews(){
+  const main = cx;
+  UNIFORMS.forEach((u, i) => {
+    const c = document.getElementById('sk' + i); if (!c) return;
+    const g = c.getContext('2d'), ok = uniformNeed(u).ok;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); g.setTransform(2, 0, 0, 2, 0, 0);
+    cx = g;
+    try { for (const [x, y, k] of [[52, 80, 0], [108, 80, 2], [80, 90, 1]]) drawSoldier(x, y, 3, ok ? Math.sin(t * 10 + k) : 0, u); } catch(err) {}
+    cx = main;
+    if (!ok){
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalCompositeOperation = 'source-in';
+      g.fillStyle = isDark() ? '#3a4157' : '#5b5f6b'; g.fillRect(0, 0, c.width, c.height);
+      g.globalCompositeOperation = 'source-over';
+    }
+  });
+}
+$('skinList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-skin]'); if (!b || b.disabled) return;
+  meta.skin = b.dataset.skin; persist(); SFX.coin(); openSkins(skinReturn);
+});
+$('skinMenu').onclick = () => openSkins('menu');
+$('skinShop').onclick = () => openSkins('shop');
+$('skinsClose').onclick = () => {
+  if (skinReturn === 'shop'){ hideAll(); state = 'shop'; renderShop(); show('shop', true); }
+  else openMenu();
+};
+checkUnlocks(true);
+
 // ---------- ljud ----------
 // Allt syntetiseras med Web Audio, inga ljudfiler. Startas vid första tryck (krav i webbläsare).
 let snd = {music:true, sfx:true};
@@ -1620,7 +1721,7 @@ const deg = (sc, i) => sc[((i % sc.length) + sc.length) % sc.length] + 12 * Math
 const seeded = n => { n = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b); n ^= n >>> 13; n = Math.imul(n, 0xc2b2ae35); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
 function musicLevel(){
   if (!snd.music) return 0;
-  return {play:1, done:1, menu:.75, shop:.75, perk:.75, bestiary:.75, fail:.6, paused:.35, parent:.35}[state] || 0;
+  return {play:1, done:1, menu:.75, shop:.75, perk:.75, bestiary:.75, skins:.75, fail:.6, paused:.35, parent:.35}[state] || 0;
 }
 function scheduleMusic(){
   const c = AU.ctx; if (!c || c.state !== 'running') return;
@@ -1805,6 +1906,7 @@ function loop(now){
   if (state === 'play'){ update(dt); tickParent(dt); }
   else if (state === 'done'){ t += dt; dist += speed * dt * .8; moveProps(dt); for (const b of bullets) b.y += b.vy * dt; stepFx(dt); }
   else if (state === 'bestiary'){ t += dt; dist += 70 * dt; moveProps(dt); drawPortraits(); }
+  else if (state === 'skins'){ t += dt; dist += 70 * dt; moveProps(dt); drawSkinPreviews(); }
   else if (state === 'menu' || state === 'shop'){ t += dt; speed = 90; dist += 70 * dt; moveProps(dt); flashT = 0; if (texts) stepFx(dt); }
   draw();
   requestAnimationFrame(loop);
